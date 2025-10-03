@@ -35,3 +35,45 @@
       nil
       {:above above
        :under under})))
+
+(defn index-edges [v]
+  (let [v (concat [(last v)] v [(first v)])]
+    (loop [v v
+           res {}]
+      (let [[b c a & v] v]
+        (if (nil? a)
+          res
+          (recur (concat [c] [a] v) (assoc res c [b a])))))))
+
+(defn ascending-step [edge-index path]
+  (let [nexts (edge-index (- 0 (first path)))]
+    (for [next nexts]
+      (conj path next))))
+
+(defn- rotate-to-start-from-min [path]
+  (let [m (apply min path)
+        mi (.indexOf path m)]
+    (concat (drop mi path) (take mi path))))
+
+(defn sector? [path]
+  (when (empty? path)
+    (throw (.Exception "empty path")))
+  (let [[h & t] path]
+    (if (nil? t)
+      nil
+      (let [i (.indexOf t h)]
+        (if (>= i 0)
+          (->> path (take (inc i)) rotate-to-start-from-min)
+          nil)))))
+
+(defn all-sectors [edge-index]
+  (loop [paths [(list 1)]
+         res #{}]
+    (if (empty? paths)
+      res
+      (let [[path & paths] paths
+            sector (sector? path)]
+        (if (not (nil? sector))
+          (recur paths (conj res sector))
+          (let [conts (ascending-step edge-index path)]
+            (recur (concat paths conts) res)))))))

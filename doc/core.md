@@ -2,10 +2,13 @@
   * [Representation and Validity](#representation-and-validity)
     * [The Meaning of the Vector](#the-meaning-of-the-vector)
     * [Proper Knots](#proper-knots)
+  * [Knot Geometry](#knot-geometry)
+    * [Tracing Edges](#tracing-edges)
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
-   [knots.core :refer [check-vec check-proper]]))
+   [knots.core :refer [check-vec check-proper index-edges ascending-step sector?
+                       all-sectors]]))
 
 ```
 # Knots Library
@@ -114,5 +117,96 @@ The segment that wraps around the vector is also checked.
 (fact
  (check-proper [-1 -2 3 1 2 -3]) => {:above #{[3 1] [1 2]}
                                      :under #{[-1 -2] [-3 -1]}})
+
+```
+## Knot Geometry
+
+One important criterion for a vector to actually represent a knot is for the
+underlying knot to actually make sense geometrically. That is, we need to
+make sure that when we route the rope through the required crossing points,
+we are not getting additional crossings that are not accounted for by the
+vector.
+
+One way of making sure this is indeed the case is by looking at _sectors_,
+and the sections that make them.
+
+Sectors are parts of the 2D plane that are enclosed by rope sections. Because
+sections divide the plane into sectors, each section should appear at the
+boundary of exactly two sectors.
+
+Sectors can be found by tracing _ascending edges_ of the knot. An _edge_ is a
+rope segment, considered with a direction. An _ascending edge_ is an edge
+that goes from an "under" position in one crossing to an "above" position in
+a neighboring corssing. For example, in the knot `[1 -2 2 -1]`, there are
+three  ascending nodes: `[-2 1]` (the first two elements, in reverse),
+`[-2 2]`, and `[-1 1]` (wrapping around the vector).
+
+### Tracing Edges
+
+To be able to efficiently trace edges, we need to index them. `index-edges`
+does just that. It takes a vector and returns a map from its crossing numbers
+to pairs `[predecessor successor]`, which list the crossing numbers before
+and after it (with the proper sign assigned).
+```clojure
+(fact
+ (index-edges [1 -2 3 -1 2 -3]) => {1 [-3 -2]
+                                    -2 [1 3]
+                                    3 [-2 -1]
+                                    -1 [3 2]
+                                    2 [-1 -3]
+                                    -3 [2 1]})
+
+```
+In this index, the ascending edges are represented by the negative keys in
+the map. Each negative key points to a pair of positive values, each of them
+corresponds to a different ascendig edge. For example, `-2` points to `[1
+3]`, making both `[-2 1]` and `[-2 3]` ascending edges in this knot.
+
+We define an _ascending path_ as a path along distinct crossings, going only
+through ascending edges. We start with a negative number (say, -1), and find
+its two neighbors in the map. We choose one of them (say, 3) and continue the
+process from its negative (-3). We continue the process until we encounter a
+crossing we have already seen.
+
+`ascending-step` takes an edge index and a partial path, given as a sequence
+of crossing numbers (absolute values) given in reverse, so that the current
+location is the first element, and returns a sequence of the (two) immediate
+continuations of this path.
+```clojure
+(fact
+ (-> [1 -2 3 -1 2 -3]
+     index-edges
+     (ascending-step (list 3 1))) => [[2 3 1]
+                                     [1 3 1]])
+
+```
+The function `sector?` takes a path and returns `nil` if the path is open.
+```clojure
+(fact
+ (sector? (list 1 2 3)) => nil)
+
+```
+If the path ends in a closed loop (i.e., the first element appears earlier in
+the path), the closed part it returned.
+```clojure
+(fact
+ (sector? (list 1 2 3 1 2)) => [1 2 3])
+
+```
+Since a path around a sector can start at any point, we start the cyclic
+section from the lowest crossing number, to get a unique sequence for the
+segment.
+```clojure
+(fact
+ (sector? (list 2 3 1 2)) => [1 2 3])
+
+```
+`all-sectors` takes an edge-index of a knot and returns all the sectors in
+the knot.
+```clojure
+(fact
+ (-> [1 -2 3 -1 2 -3]
+     index-edges
+     all-sectors) => #{[1 2] [1 2 3] [1 3] [1 3 2] [2 3]})
 ```
 
