@@ -1,10 +1,11 @@
 * [Knots Library](#knots-library)
   * [Representation and Validity](#representation-and-validity)
     * [The Meaning of the Vector](#the-meaning-of-the-vector)
+    * [Proper Knots](#proper-knots)
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
-   [knots.core :refer [check-vec]]))
+   [knots.core :refer [check-vec check-proper]]))
 
 ```
 # Knots Library
@@ -65,7 +66,7 @@ creating one crossing.
 ```clojure
 (fact
  ;; Trefoil knot
- (check-vec [1 2 3 -1 -2 -3]) => nil?
+ (check-vec [1 -2 3 -1 2 -3]) => nil?
  ;; Unknot with a twist
  (check-vec [1 -1]) => nil?
  )
@@ -83,3 +84,35 @@ A vector can be understood as follows:
    crossing. A positive value means "above", and a negative value means
    "under". Since each corssing has one piece of rope going above and one
    going under, each of the values appears once.
+
+### Proper Knots
+
+We use the term _proper knot_ to refer to a knot in which the rope alternates
+between the "above" and "under" position at every crossing. By this, an
+"improper knot" is a knot that has at least one rope section that goes from
+"above" to "above", or from "under" to "under",
+
+The function `check-proper` returns `nil` for vectors representing proper
+knots.
+```clojure
+(fact
+ (check-proper [1 -2 3 -1 2 -3]) => nil
+ (check-proper [-1 2 -3 1 -2 3]) => nil)
+
+```
+If, however, we swap the positions of crossing `2` in the above trefold from
+above to under and vice versa, we will get an improper knot, containing four
+sections that do not alternate. `check-proper` returns them.
+```clojure
+(fact
+ (check-proper [1 2 3 -1 -2 -3]) => {:above #{[1 2] [2 3]}
+                                     :under #{[-1 -2] [-2 -3]}})
+
+```
+The segment that wraps around the vector is also checked.
+```clojure
+(fact
+ (check-proper [-1 -2 3 1 2 -3]) => {:above #{[3 1] [1 2]}
+                                     :under #{[-1 -2] [-3 -1]}})
+```
+
