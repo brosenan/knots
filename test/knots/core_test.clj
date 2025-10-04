@@ -1,7 +1,7 @@
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
-   [knots.core :refer [check-vec check-proper index-edges ascending-edges
-                       ascending-step sector? all-sectors
+   [knots.core :refer [check-vec check-proper canonicalize index-edges
+                       ascending-edges ascending-step sector? all-sectors
                        sector-ascending-edges check-geometric]]))
 
 ;; # Knots Library
@@ -93,6 +93,26 @@
 (fact
  (check-proper [-1 -2 3 1 2 -3]) => {:above #{[3 1] [1 2]}
                                      :under #{[-1 -2] [-3 -1]}})
+
+;; ### Canonical Representation
+
+;; While any vector that meets the above criteria represents a knot, we would
+;; like to restrict our representation in order to limit, as much as possible,
+;; the number of different representations for a given knot.
+
+;; We do not aim at bringing this number down to one due to symmetry between the
+;; crossings, but we can bring this number to O(n), if we follow a simple
+;; convention, the so called _cannonical representation_.
+
+;; Given a knot, we select a crossing and a direction of the rope going above
+;; it. This crossing is given the number 1. As we follow the rope in the
+;; selected direction, we give each unique crossing we encounter the lowest
+;; absolute value not already allocated.
+
+;; `canonicalize` takes a vector representing a valid (not necessarily proper)
+;; knot and turns it into its canonical form.
+(fact
+ (canonicalize [3 -2 1 -3 2 -1]) => [1 -2 3 -1 2 -3])
 
 ;; ## Knot Geometry
 

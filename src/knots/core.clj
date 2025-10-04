@@ -36,6 +36,27 @@
       {:above above
        :under under})))
 
+(defn- sign [n]
+  (if (< n 0)
+    -1 1))
+
+(defn canonicalize [v]
+  (loop [v v
+         c []
+         m {}
+         next 1]
+    (let [[n & v] v]
+      (if (nil? n)
+        c
+        (let [absn (abs n)
+              absn' (m absn)]
+          (if (nil? absn')
+            (let [absn' next
+                  next (inc next)
+                  m (assoc m absn absn')]
+              (recur v (conj c (* absn' (sign n))) m next))
+            (recur v (conj c (* absn' (sign n))) m next)))))))
+
 (defn index-edges [v]
   (let [v (concat [(last v)] v [(first v)])]
     (loop [v v
@@ -98,7 +119,6 @@
         secaes (mapcat sector-ascending-edges secs)
         counts (frequencies secaes)
         violations (->> aes (filter #(not= (counts %) 2)))]
-    (prn counts)
     (if (empty? violations)
       nil
       (set violations))))
