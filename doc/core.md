@@ -6,13 +6,16 @@
     * [Equivalent Vectors](#equivalent-vectors)
   * [Knot Geometry](#knot-geometry)
     * [Tracing Edges](#tracing-edges)
+  * [Simplifying a Knot](#simplifying-a-knot)
+    * [Untwisting](#untwisting)
+    * [Repeated Application](#repeated-application)
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
    [knots.core :refer [check-vec check-proper canonicalize all-rotations
                        rotate-reverse all-equivalent index-edges ascending-edges
                        ascending-step sector? all-sectors sector-ascending-edges
-                       check-geometric]]))
+                       check-geometric slice try-untwist untwist simplify]]))
 
 ```
 # Knots Library
@@ -143,6 +146,14 @@ knot and turns it into its canonical form.
 ```clojure
 (fact
  (canonicalize [3 -2 1 -3 2 -1]) => [1 -2 3 -1 2 -3])
+
+```
+Since by convention the first element in the vector needs to be positive
+(passing the crossing from above), when given a negative value as the first
+element, the vector is rotated one place before moving on.
+```clojure
+(fact
+ (canonicalize [-1 3 -2 1 -3 2]) => [1 -2 3 -1 2 -3])
 
 ```
 ### Equivalent Vectors
@@ -327,5 +338,77 @@ give a count of 2.
  (-> [1 -2 3 -4 5 -3 4 -1 2 -5]
      index-edges
      check-geometric) => #{[-5 1] [-5 2] [-4 3] [-4 5] [-3 4] [-3 5] [-2 1] [-2 3] [-1 2] [-1 4]})
+
+```
+## Simplifying a Knot
+
+All improper knots and some proper knots can be simplified, i.e., brought to
+a form with fewer crossings, without the need to cut the rope, i.e., without
+changing the fundamental nature of the knot.
+
+Simplification is typically done by first observing a pattern in the knot,
+then applying a simplification operation based on this pattern, one that
+preserves the knot's nature, while removing at least one crossing.
+
+### Untwisting
+
+We define a _twist_ in a knot as a crossing that is created by _twisting_ a
+part of a knot. In our definition, twisting requires that the knot consists
+of two separate parts, connected by a pair of rope segments. Twisting entails
+flipping one of the parts, thus twisting the two ropes segments, creating a
+new crossing.
+
+Accordingly, untwisting means idetifying such a crossing, separating between
+two distinct parts of the knot, and flipping one side to remove it.
+
+To enable untwisting, the function `slice` takes a vector and two values on
+the vector, and returns the sequence of values between them.
+```clojure
+(fact
+ (slice [1 2 3 4 5 6] 2 5) => [3 4])
+
+```
+It treats the vector as if it is closed on itself.
+```clojure
+(fact
+ (slice [1 2 3 4 5 6] 5 2) => [6 1])
+
+```
+The function `try-untwist` takes a vector and a crossing number (absolute
+value). It then checks if this crossing is a twist.
+
+If returns `nil` if the crossing is not a twist.
+```clojure
+(fact
+ (try-untwist [1 -2 3 -4 5 -5 4 -1 2 -3] 3) => nil)
+
+```
+If the selected crossing is a twist, it removes it, flipping one of the
+parts, rearranging and canonicalizing the result.
+```clojure
+(fact
+ (try-untwist [1 -2 3 -4 5 -5 4 -1 2 -3] 4) => [1 -2 3 -1 2 -4 4 -3])
+
+```
+The function `untwist` takes a vector representing a knot as input and
+returns `nil` if the vector has no twists.
+```clojure
+(fact
+ (untwist [1 -2 3 -1 2 -3]) => nil?)
+
+```
+However, if the knot has a twist, it will return an untwisted version of it.
+```clojure
+(fact
+ (untwist [1 -2 3 -4 5 -5 4 -1 2 -3]) => [1 -2 3 -1 2 -4 4 -3])
+
+```
+### Repeated Application
+
+The function `simplify` applies the above strategies, one at a time, to
+simplify a knot until it is no longer possible.
+```clojure
+(fact
+ (simplify [1 -2 3 -4 5 -5 4 -1 2 -3]) => [1 -2 3 -1 2 -3])
 ```
 

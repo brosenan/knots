@@ -1,4 +1,5 @@
-(ns knots.core)
+(ns knots.core
+  (:require [clojure.set :as set]))
 
 (defn check-vec
   [v]
@@ -41,21 +42,23 @@
     -1 1))
 
 (defn canonicalize [v]
-  (loop [v v
-         c []
-         m {}
-         next 1]
-    (let [[n & v] v]
-      (if (nil? n)
-        c
-        (let [absn (abs n)
-              absn' (m absn)]
-          (if (nil? absn')
-            (let [absn' next
-                  next (inc next)
-                  m (assoc m absn absn')]
-              (recur v (conj c (* absn' (sign n))) m next))
-            (recur v (conj c (* absn' (sign n))) m next)))))))
+  (if (< (first v) 0)
+    (recur (concat (rest v) [(first v)]))
+    (loop [v v
+           c []
+           m {}
+           next 1]
+      (let [[n & v] v]
+        (if (nil? n)
+          c
+          (let [absn (abs n)
+                absn' (m absn)]
+            (if (nil? absn')
+              (let [absn' next
+                    next (inc next)
+                    m (assoc m absn absn')]
+                (recur v (conj c (* absn' (sign n))) m next))
+              (recur v (conj c (* absn' (sign n))) m next))))))))
 
 (defn all-rotations [v]
   (for [i (range 0 (count v) 2)]
@@ -135,3 +138,31 @@
     (if (empty? violations)
       nil
       (set violations))))
+
+(defn slice [v a b]
+  (let [v (vec (concat v v))
+        ai (inc (.indexOf v a))
+        v (drop ai v)
+        bi (.indexOf v b)]
+    (->> v (take bi) vec)))
+
+(defn try-untwist [v n]
+  (let [s1 (slice v n (- n))
+        c1 (->> s1 (map abs) set)
+        s2 (slice v (- n) n)
+        c2 (->> s2 (map abs) set)]
+    (if (empty? (set/intersection c1 c2))
+      (-> (concat s1 (reverse s2)) vec canonicalize)
+      nil)))
+
+(defn untwist [v]
+  (let [n (/ (count v) 2)]
+    (some identity (for [i (range 1 (inc n))]
+                     (try-untwist v i)))))
+
+(defn simplify [v]
+  (loop [v v]
+    (let [v' (untwist v)]
+      (if (nil? v')
+        v
+        (recur v')))))
