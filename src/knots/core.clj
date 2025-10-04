@@ -45,6 +45,12 @@
           res
           (recur (concat [c] [a] v) (assoc res c [b a])))))))
 
+(defn ascending-edges [index]
+  (set (for [[neg pair] index
+             :when (< neg 0)
+             pos pair]
+         [neg pos])))
+
 (defn ascending-step [edge-index path]
   (let [nexts (edge-index (- 0 (first path)))]
     (for [next nexts]
@@ -77,3 +83,22 @@
           (recur paths (conj res sector))
           (let [conts (ascending-step edge-index path)]
             (recur (concat paths conts) res)))))))
+
+(defn sector-ascending-edges [sector]
+  (loop [ns (concat sector [(first sector)])
+         res #{}]
+    (if (< (count ns) 2)
+      res
+      (let [[n1 n2 & ns] ns]
+        (recur (concat [n2] ns) (conj res [(- 0 n2) n1]))))))
+
+(defn check-geometric [index]
+  (let [aes (ascending-edges index)
+        secs (all-sectors index)
+        secaes (mapcat sector-ascending-edges secs)
+        counts (frequencies secaes)
+        violations (->> aes (filter #(not= (counts %) 2)))]
+    (prn counts)
+    (if (empty? violations)
+      nil
+      (set violations))))

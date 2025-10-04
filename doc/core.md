@@ -7,8 +7,9 @@
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
-   [knots.core :refer [check-vec check-proper index-edges ascending-step sector?
-                       all-sectors]]))
+   [knots.core :refer [check-vec check-proper index-edges ascending-edges
+                       ascending-step sector? all-sectors
+                       sector-ascending-edges check-geometric]]))
 
 ```
 # Knots Library
@@ -162,6 +163,15 @@ the map. Each negative key points to a pair of positive values, each of them
 corresponds to a different ascendig edge. For example, `-2` points to `[1
 3]`, making both `[-2 1]` and `[-2 3]` ascending edges in this knot.
 
+The function `ascending-edges` takes an index and enumerates all the
+ascending edges it represents.
+```clojure
+(fact
+ (-> [1 -2 3 -1 2 -3]
+     index-edges
+     ascending-edges) => #{[-2 1] [-2 3] [-1 3] [-1 2] [-3 2] [-3 1]})
+
+```
 We define an _ascending path_ as a path along distinct crossings, going only
 through ascending edges. We start with a negative number (say, -1), and find
 its two neighbors in the map. We choose one of them (say, 3) and continue the
@@ -208,5 +218,38 @@ the knot.
  (-> [1 -2 3 -1 2 -3]
      index-edges
      all-sectors) => #{[1 2] [1 2 3] [1 3] [1 3 2] [2 3]})
+
+```
+The function `sector-ascending-edges` takes a sector sequence and returns the
+ascending edges that make it. Remember that the crossings in the sector
+sequence are in reverse order, so for a sequence `... a b ...`, `[-b a]` will
+be an ascending edge.
+```clojure
+(fact
+ (sector-ascending-edges [1 2 3 4]) => #{[-2 1] [-3 2] [-4 3] [-1 4]})
+
+```
+Now we have all the necessary components for the geometric test. A knot is
+considered "geometric" if every ascending edge appears in exactly two
+sectors Because sectors do not have repeating crossings, it's sufficient to
+check that _a sequence of all ascending edges, making up all sectors_,
+contains each ascending edge in the knot exactly twice.
+
+The function `check-geometric` takes an edge index and returns `nil` for
+"geometric" knots, such as the trefoil.
+```clojure
+(fact
+ (-> [1 -2 3 -1 2 -3]
+     index-edges
+     check-geometric) => nil)
+
+```
+For a knot that is not geometric, it returns a map with the edges that do not
+give a count of 2.
+```clojure
+(fact
+ (-> [1 -2 3 -4 5 -3 4 -1 2 -5]
+     index-edges
+     check-geometric) => #{[-5 1] [-5 2] [-4 3] [-4 5] [-3 4] [-3 5] [-2 1] [-2 3] [-1 2] [-1 4]})
 ```
 
