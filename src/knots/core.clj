@@ -57,6 +57,19 @@
               (recur v (conj c (* absn' (sign n))) m next))
             (recur v (conj c (* absn' (sign n))) m next)))))))
 
+(defn all-rotations [v]
+  (for [i (range 0 (count v) 2)]
+    (vec (concat (drop i v) (take i v)))))
+
+(defn rotate-reverse [v]
+  (-> (concat (rest v) [(first v)]) reverse vec))
+
+(defn all-equivalent [v]
+  (->> [v (rotate-reverse v)]
+       (mapcat all-rotations)
+       (map canonicalize)
+       set))
+
 (defn index-edges [v]
   (let [v (concat [(last v)] v [(first v)])]
     (loop [v v

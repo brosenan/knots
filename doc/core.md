@@ -3,14 +3,16 @@
     * [The Meaning of the Vector](#the-meaning-of-the-vector)
     * [Proper Knots](#proper-knots)
     * [Canonical Representation](#canonical-representation)
+    * [Equivalent Vectors](#equivalent-vectors)
   * [Knot Geometry](#knot-geometry)
     * [Tracing Edges](#tracing-edges)
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
-   [knots.core :refer [check-vec check-proper canonicalize index-edges
-                       ascending-edges ascending-step sector? all-sectors
-                       sector-ascending-edges check-geometric]]))
+   [knots.core :refer [check-vec check-proper canonicalize all-rotations
+                       rotate-reverse all-equivalent index-edges ascending-edges
+                       ascending-step sector? all-sectors sector-ascending-edges
+                       check-geometric]]))
 
 ```
 # Knots Library
@@ -141,6 +143,57 @@ knot and turns it into its canonical form.
 ```clojure
 (fact
  (canonicalize [3 -2 1 -3 2 -1]) => [1 -2 3 -1 2 -3])
+
+```
+### Equivalent Vectors
+
+The canonical representation still keeps the choice of the initial crossing
+and the direction free. As a result, a knot with `n` crossings can be
+represented using up to `2n` different canonical vectors, one for each
+initial crossing and direction. It is possible that there are actually way
+fewer different actual vectors, due to symmetries in the knot. For example,
+we expect that a trefoil knot has exactly one representation. However, other,
+less symmetric knots can have more.
+
+As a first step towards finding all representations, the function
+`all-rotations` takes a vector representing a knot and rotates enumerates all
+the ways it can be rotated in pairs, such that for a proper knot, all
+rotations start with a positive number.
+```clojure
+(fact
+ (all-rotations [1 -2 3 -1 2 -3]) => [[1 -2 3 -1 2 -3]
+                                      [3 -1 2 -3 1 -2]
+                                      [2 -3 1 -2 3 -1]])
+
+```
+For choosing the direction, we need to reverse the given vector. However,
+since for a canonical representation we need to start from above a crossing
+(a positive number), we first need to rotate the vector one place before
+reversing it.
+
+The function `rotate-reverse` does this. It rotates the given vector one
+element and then reverses it.
+```clojure
+(fact
+ (rotate-reverse [1 -2 3 -1 2 -3]) => [1 -3 2 -1 3 -2])
+
+```
+Finally, `all-equivalent` takes a vector representing a knot and returns a
+set of all canonical representations of the same knot, consisting of all
+choices of initial crossings and directions. The output is a set, so that
+outputs with the same canonical representations are unified into one, thus
+minimizing the number of representations.
+```clojure
+(fact
+ (all-equivalent [1 -2 3 -1 2 -3]) => #{[1 -2 3 -1 2 -3]}
+ (all-equivalent [1 -2 3 -4 2 -3 4 -1]) => #{[1 -2 2 -3 4 -1 3 -4]
+                                             [1 -2 3 -4 2 -3 4 -1]
+                                             [1 -2 3 -4 4 -1 2 -3]
+                                             [1 -2 3 -3 4 -1 2 -4]
+                                             [1 -2 3 -1 2 -4 4 -3]
+                                             [1 -2 3 -1 2 -3 4 -4]
+                                             [1 -2 3 -1 4 -4 2 -3]
+                                             [1 -1 2 -3 4 -2 3 -4]})
 
 ```
 ## Knot Geometry
