@@ -166,3 +166,17 @@
       (if (nil? v')
         v
         (recur v')))))
+
+(defn selector [seed]
+  (let [s (atom [seed seed])]
+    (fn [n]
+      (let [[[old-v _] _] (swap-vals! s (fn [[v seed]]
+                                          (let [v (quot v n)
+                                                seed (if (> v 0)
+                                                       seed
+                                                       (* seed 31))
+                                                v (if (> v 0)
+                                                    v
+                                                    seed)]
+                                            [v seed])))]
+        (mod old-v n)))))

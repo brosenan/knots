@@ -9,13 +9,16 @@
   * [Simplifying a Knot](#simplifying-a-knot)
     * [Untwisting](#untwisting)
     * [Repeated Application](#repeated-application)
+  * [Knot Discovery](#knot-discovery)
+    * [Deterministic Selection](#deterministic-selection)
 ```clojure
 (ns knots.core-test
   (:require [midje.sweet :refer [fact =>]]
    [knots.core :refer [check-vec check-proper canonicalize all-rotations
                        rotate-reverse all-equivalent index-edges ascending-edges
                        ascending-step sector? all-sectors sector-ascending-edges
-                       check-geometric slice try-untwist untwist simplify]]))
+                       check-geometric slice try-untwist untwist simplify
+                       selector]]))
 
 ```
 # Knots Library
@@ -410,5 +413,49 @@ simplify a knot until it is no longer possible.
 ```clojure
 (fact
  (simplify [1 -2 3 -4 5 -5 4 -1 2 -3]) => [1 -2 3 -1 2 -3])
+
+```
+## Knot Discovery
+
+An important part of knot theory is discovering and cataloging knots. While a
+catalog already exists, we would like to have the ability to reproduce it.
+
+To do this, we need a way to discover new knots. Overall, the process is
+roughly the following. We "guess" a vector that is potentially a canonical
+representation of a knot. We then test that it is indeed a knot, simplify it
+as much as we can and check that it is not already known. Then, if it meets
+all our criteria, we add it to our catalog, indexing it using all its
+equivalent representations.
+
+### Deterministic Selection
+
+In order to create the initial "guess", we need a way to make choices that
+will change from one invocation to the other. However, we would like to keep
+these selections deterministic so that the process is reproducible.
+
+To do so, we define `selector`, a function that takes an integer
+_seed_, and returns a `select` function. `select` takes a positive integer
+and returns a number between 0 and that integer, exclusive.
+```clojure
+(fact
+ (let [select (selector 1234)]
+   ;; Since we are dividing by 10 each time, we are getting the digits.
+   (select 10) => 4
+   (select 10) => 3
+   (select 10) => 2
+   (select 10) => 1
+   ;; Once the value becomes 0, the value is replaced with the original value
+   ;; * 31, which in this case is 1234*31=38254
+   (select 10) => 4
+   (select 10) => 5
+   (select 10) => 2
+   (select 10) => 8
+   (select 10) => 3
+   ;; Now the seed is multiplied again: 38254*31=1185874
+   (select 10) => 4
+   (select 10) => 7
+   (select 10) => 8
+   (select 10) => 5
+   (select 10) => 8))
 ```
 
