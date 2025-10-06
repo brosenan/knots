@@ -180,3 +180,33 @@
                                                     seed)]
                                             [v seed])))]
         (mod old-v n)))))
+
+(defn- sort-abs [v]
+  (sort #(< (abs %1) (abs %2)) v))
+
+(defn- conj-if-abs-le [coll next n]
+  (if (<= (abs next) n)
+    (conj coll next)
+    coll))
+
+(defn element-candidates [v n]
+  (if (empty? v)
+    [1]
+    (let [sgn (* (sign (last v)) -1)
+          negs (->> v (take (dec (count v))) (map #(- %)) (filter #(> (* % sgn) 0)) set)
+          next (->> v (map abs) (apply max) inc (* sgn))
+          candidates (-> negs 
+                         (set/difference (set v))
+                         (conj-if-abs-le next n)
+                         vec sort-abs)]
+      candidates)))
+
+(defn knot-candidate [seed n]
+  (let [select (selector seed)]
+    (loop [v []]
+      (let [candidates (element-candidates v n)]
+        (if (empty? candidates)
+          v
+          (let [i (select (count candidates))
+                sel (nth candidates i)]
+            (recur (conj v sel))))))))

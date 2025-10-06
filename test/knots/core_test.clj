@@ -4,7 +4,7 @@
                        rotate-reverse all-equivalent index-edges ascending-edges
                        ascending-step sector? all-sectors sector-ascending-edges
                        check-geometric slice try-untwist untwist simplify
-                       selector]]))
+                       selector element-candidates knot-candidate]]))
 
 ;; # Knots Library
 
@@ -379,3 +379,41 @@
    (select 10) => 8
    (select 10) => 5
    (select 10) => 8))
+
+;; ### Next Element Candidates
+
+;; We build knot candidate step by step, one element at a time. In each
+;; iteration we first create a list of candidates and then use a `selector` to
+;; select on of them, add it to the vector and repeat.
+
+;; `element-candidates` takes a partial knot vector and a target number of
+;; crossings, and returns a vector of candidates for the next element.
+
+;; Since we are targeting a canonical representation, for an empty input vector,
+;; the only output candidate will be 1.
+(fact
+ (element-candidates [] 5) => [1])
+
+;; Given a non-empty initial vector, the candidates will all have a sign
+;; opposing the last element, no larger in absolute value than the maximum + 1
+;; or the target number of crossings, and with no repeats from the vector
+;; itself. Also, to avoid trivial twists, we also disallow the negative of the
+;; last element. The candidates are sorted by absolute values.
+(fact
+ (element-candidates [1] 5) => [-2]
+ (element-candidates [1 -2 3] 5) => [-1 -4]
+ (element-candidates [1 -2 3 -4] 5) => [2 5]
+ (element-candidates [1 -2 3 -4 5] 5) => [-1 -3]
+ (element-candidates [1 -2 3 -4 2 -1] 5) => [4 5])
+
+;; From here, all it takes is to run this repeatedly, until there are no options
+;; left.
+
+;; `knot-candidate` takes a seed value and a target number of crossings, and
+;; returns a vector, which may or may not a valid knot representation. However,
+;; if it is, it is guaranteed to be canonical and proper.
+(fact
+ (knot-candidate 1001 3) => [1 -2 3 -1 2 -3]
+ (knot-candidate 1001 4) => [1 -2 3 -4 2 -1 4 -3]
+ (knot-candidate 1002 4) => [1 -2 3 -1 4 -3 2 -4]
+ (knot-candidate 1001 7) => [1 -2 3 -4 2 -3 5 -6 4 -5 7 -1 6 -7])
