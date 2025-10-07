@@ -4,7 +4,8 @@
                        rotate-reverse all-equivalent index-edges ascending-edges
                        ascending-step sector? all-sectors sector-ascending-edges
                        check-geometric slice try-untwist untwist simplify
-                       selector element-candidates knot-candidate]]))
+                       selector element-candidates knot-candidate
+                       index-catalog check-all catalog-consider]]))
 
 ;; # Knots Library
 
@@ -417,3 +418,81 @@
  (knot-candidate 1001 4) => [1 -2 3 -4 2 -1 4 -3]
  (knot-candidate 1002 4) => [1 -2 3 -1 4 -3 2 -4]
  (knot-candidate 1001 7) => [1 -2 3 -4 2 -3 5 -6 4 -5 7 -1 6 -7])
+
+;; ### Cataloging Knots
+
+;; A _knot catalog_ is a map from an integer number of crossings to a set of all
+;; (known) unique knots with that number of crossings.
+
+;; Because a knot can be represented by up to `2n` equivalent representations,
+;; `index-catalog` takes a catalog and indexes it, i.e., returns a map from
+;; vectors to vectors, mapping all representations of a knot to its
+;; representative in the catalog.
+(fact
+ (index-catalog {3 #{[1 -2 3 -1 2 -3]}
+                 4 #{[1 -2 3 -4 2 -1 4 -3]}}) =>
+ {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]
+  [1 -2 3 -4 2 -1 4 -3] [1 -2 3 -4 2 -1 4 -3]
+  [1 -2 3 -1 4 -3 2 -4] [1 -2 3 -4 2 -1 4 -3]})
+
+;; Before we can catalog a knot candidate, we need to put it through all the
+;; [checks defined](#representation-and-validity) [above](#knot-geometry) to
+;; make sure this is indeed a valid knot.
+
+;; `check-all` takes a knot vector and returns `nil` if it is a valid knot.
+(fact
+ (check-all [1 -2 3 -1 2 -3]) => nil?)
+
+;; If this is not a valid knot, it returns a map with the reason.
+(fact
+ (check-all [1 -2 3]) => {:odd-len 3}
+ (check-all [1 0]) => {:contains-zero true}
+ (check-all [1 -2]) => {:invalid-node-number -2}
+ (check-all [1 1]) => {:repeated 1}
+ (check-all [1 2 3 -1 -2 -3]) => {:improper {:above #{[1 2] [2 3]}
+                                             :under #{[-1 -2] [-2 -3]}}}
+ (check-all [1 -2 3 -4 5 -3 4 -1 2 -5]) =>
+ {:geometry #{[-5 1] [-5 2] [-4 3] [-4 5] [-3 4]
+              [-3 5] [-2 1] [-2 3] [-1 2] [-1 4]}})
+
+;; ### Updating the Catalog
+
+;; Because a catalog needs to be indexed, and because we do not want to
+;; recompute it for every change to the catalog, but rather update it
+;; incrementally, we would like to package the catalog along with its index for
+;; most catalog-related operations. In fact, since the operations of populating
+;; the catalog are often long-running we can use such a packaging to add more
+;; statistics and diagnostic information to get more visibility to the process.
+
+;; We therefore use a map with the following keys in catalog-related functions,
+;; as both input and output:
+
+;; * `:catalog`: The catalog map.
+;; * `:index`: The catalog index (map).
+;; * `:stats`: A map containing counts of candidates that did not make the
+;;   catalog, keyed by reason.
+
+;; `catalog-consider` takes a map as described above and a candidate knot. It
+;; checks the knot, tries to [simplify](#simplifying-a-knot) it, then looks for
+;; it in the index. If not found, it adds it to the catalog.
+(fact
+ (let [cat {:catalog {3 [1 -2 3 -1 2 -3]}
+            :index {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]}
+            :stats {:odd-len 1}}]
+   (catalog-consider cat [1 2 3]) => {:catalog {3 [1 -2 3 -1 2 -3]}
+                                      :index {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]}
+                                      :stats {:odd-len 2}}
+   (catalog-consider cat [1 0]) => {:catalog {3 [1 -2 3 -1 2 -3]}
+                                    :index {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]}
+                                    :stats {:odd-len 1
+                                            :contains-zero 1}}
+   (catalog-consider cat [1 -2 3 -1 2 -3]) => {:catalog {3 [1 -2 3 -1 2 -3]}
+                                               :index {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]}
+                                               :stats {:odd-len 1
+                                                       :dup 1}}
+   (comment (catalog-consider cat [1 -2 3 -4 2 -1 4 -3]) => {:catalog {3 [1 -2 3 -1 2 -3]
+                                                                       4 [1 -2 3 -4 2 -1 4 -3]}
+                                                             :index {[1 -2 3 -1 2 -3] [1 -2 3 -1 2 -3]
+                                                                     [1 -2 3 -4 2 -1 4 -3] [1 -2 3 -4 2 -1 4 -3]
+                                                                     [1 -2 3 -1 4 -3 2 -4] [1 -2 3 -4 2 -1 4 -3]}
+                                                             :stats {:odd-len 1}})))

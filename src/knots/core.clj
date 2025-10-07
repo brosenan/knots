@@ -210,3 +210,35 @@
           (let [i (select (count candidates))
                 sel (nth candidates i)]
             (recur (conj v sel))))))))
+
+(defn index-catalog [cat]
+  (->> (for [[_ vset] cat
+             v vset
+             v' (all-equivalent v)]
+         [v' v])
+       (into {})))
+
+(defn check-all [v]
+  (if-let [err (check-vec v)]
+    err
+    (if-let [improp (check-proper v)]
+      {:improper improp}
+      (if-let [geom (-> v index-edges check-geometric)]
+        {:geometry geom}
+        nil))))
+
+(defn catalog-consider [{:keys [catalog index stats] :as inp} v]
+  (let [chk (check-all v)]
+    (if (some? chk)
+      (update inp :stats
+              update (-> chk first first) (fnil inc 0))
+      (let [v (simplify v)]
+        (if (contains? index v)
+          (update inp :stats
+                  update :dup (fnil inc 0))
+          (let [n (/ (count v) 2)
+                catalog' {n v}
+                index' (index-catalog catalog')]
+            {:catalog (merge catalog catalog')
+             :index (merge index index')
+             :stats stats}))))))
