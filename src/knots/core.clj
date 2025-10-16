@@ -137,7 +137,9 @@
         violations (->> aes (filter #(not= (counts %) 2)))]
     (if (empty? violations)
       nil
-      (set violations))))
+      {:violations (set violations)
+       :sectors secs
+       :counts counts})))
 
 (defn slice [v a b]
   (let [v (vec (concat v v))
