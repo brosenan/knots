@@ -29,7 +29,8 @@
           (double-deref? val) (let [val (-> val second second)]
                                 (calc-compr bindings expr (conj vars var)
                                             `(mapcat (fn [~sym-vals]
-                                                       (map #(conj ~sym-vals %) ~val)) ~output)))
+                                                       (let [~vars ~sym-vals]
+                                                         (map #(conj ~sym-vals %) ~val))) ~output)))
           :else (calc-compr bindings expr (conj vars var)
                             `(map (fn [~sym-vals]
                                     (let [~vars ~sym-vals]

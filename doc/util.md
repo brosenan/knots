@@ -72,5 +72,13 @@ each element in the collection on the right-hand side.
  (compr [x @@[1 2 3]
          y (inc x)]
         y) => [2 3 4])
+
+```
+"in" bindings can depend on other bindings.
+```clojure
+(fact
+ (compr [x @@[1 2 3]
+         y @@(range x)]
+        y) => [0 0 1 0 1 2])
 ```
 
