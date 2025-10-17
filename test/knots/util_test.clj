@@ -60,4 +60,11 @@
 (fact
  (compr [x @@[1 2 3]
          y @@(range x)]
-        y) => [0 0 1 0 1 2])
+        [x y]) => [[1 0] [2 0] [2 1] [3 0] [3 1] [3 2]])
+
+;; If the binding variable is replaced with `:when`, the term on the right hand
+;; side is taken as a predicate for filtering results.
+(fact
+ (compr [x @@[1 2 3]
+         :when (= (mod x 2) 1)]
+        x) => [1 3])

@@ -26,6 +26,8 @@
       (let [[var val & bindings] bindings]
         (cond
           (nil? val) (throw (Exception. (str "Missing expression for " var " in compr")))
+          (= var :when) (calc-compr bindings expr vars
+                                    `(filter (fn [~vars] ~val) ~output))
           (double-deref? val) (let [val (-> val second second)]
                                 (calc-compr bindings expr (conj vars var)
                                             `(mapcat (fn [~sym-vals]
