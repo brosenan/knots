@@ -1,6 +1,6 @@
 (ns knots.util-test
   (:require [midje.sweet :refer [fact =>]]
-            [knots.util :refer [accum compr]]))
+            [knots.util :refer [accum until compr]]))
 
 ;; ## Accumulation
 
@@ -23,6 +23,19 @@
 (fact
  (accum (fn [x a]
           (conj a x)) #{} [1 2 3]) => [#{1} #{1 2} #{1 2 3}])
+
+;; ## Sequence Termination
+
+;; The function `until` takes a predicate function and a collection. and returns
+;; a lazy collection. Given an empty sequence, it returns the same empty
+;; sequence.
+(fact
+ (until even? []) => [])
+
+;; For a non-empty sequence, the output will end on the first element to which
+;; the predicate returns `true`.
+(fact
+ (until even? [1 2 3]) => [1 2])
 
 ;; ## Comprehension
 
@@ -48,6 +61,8 @@
          b (inc a)]
         b) => [2])
 
+;; ### Ranging over Collections
+
 ;; Double deref (`@@` prefix) on the right-hand side of a binding should be read
 ;; as "in". This is similar to a `for` macro, where a result is returned for
 ;; each element in the collection on the right-hand side.
@@ -62,12 +77,21 @@
          y @@(range x)]
         [x y]) => [[1 0] [2 0] [2 1] [3 0] [3 1] [3 2]])
 
+;; ### Conditions
+
 ;; If the binding variable is replaced with `:when`, the term on the right hand
 ;; side is taken as a predicate for filtering results.
 (fact
  (compr [x @@[1 2 3]
          :when (= (mod x 2) 1)]
         x) => [1 3])
+
+;; The keyword `:until` causes the resulting sequence to end on the first
+;; element for which the expression on the right-hand side is true.
+(fact
+ (compr [x @@[1 2 3]
+         :until (even? x)]
+        x) => [1 2])
 
 ;; ### Reductions
 

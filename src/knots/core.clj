@@ -1,5 +1,6 @@
 (ns knots.core
-  (:require [clojure.set :as set]))
+  (:require [clojure.set :as set]
+            [knots.util :refer [compr]]))
 
 (defn check-vec
   [v]

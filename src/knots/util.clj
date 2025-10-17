@@ -11,6 +11,14 @@
     (list init)
     (accum' f init coll)))
 
+(defn until [f coll]
+  (if (empty? coll)
+    coll
+    (let [[h & t] coll]
+      (if (f h)
+        (list h)
+        (lazy-seq (cons h (until f t)))))))
+
 (defn- double-deref? [x]
   (and (seq? x)
        (-> x first (= `deref))
@@ -27,7 +35,9 @@
         (cond
           (nil? val) (throw (Exception. (str "Missing expression for " var " in compr")))
           (= var :when) (calc-compr bindings expr vars vals
-                                    `(filter (fn [~vars] ~val) ~input))
+                          `(filter (fn [~vars] ~val) ~input))
+          (= var :until) (calc-compr bindings expr vars vals
+                          `(until (fn [~vars] ~val) ~input))
           (double-deref? val) (let [val (-> val second second)]
                                 (calc-compr bindings expr (conj vars var) (conj vals nil)
                                             `(mapcat (fn [~sym-vals]
