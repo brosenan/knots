@@ -17,26 +17,33 @@
        (-> x second seq?)
        (-> x second first (= `deref))))
 
-(defn- calc-compr [bindings expr vars output]
+(defn- calc-compr [bindings expr vars vals input]
   (let [sym-vals (gensym)]
     (if (empty? bindings)
       `(map (fn [~sym-vals]
               (let [~vars ~sym-vals]
-                ~expr)) ~output)
+                ~expr)) ~input)
       (let [[var val & bindings] bindings]
         (cond
           (nil? val) (throw (Exception. (str "Missing expression for " var " in compr")))
-          (= var :when) (calc-compr bindings expr vars
-                                    `(filter (fn [~vars] ~val) ~output))
+          (= var :when) (calc-compr bindings expr vars vals
+                                    `(filter (fn [~vars] ~val) ~input))
           (double-deref? val) (let [val (-> val second second)]
-                                (calc-compr bindings expr (conj vars var)
+                                (calc-compr bindings expr (conj vars var) (conj vals nil)
                                             `(mapcat (fn [~sym-vals]
                                                        (let [~vars ~sym-vals]
-                                                         (map #(conj ~sym-vals %) ~val))) ~output)))
-          :else (calc-compr bindings expr (conj vars var)
+                                                         (map #(conj ~sym-vals %) ~val))) ~input)))
+          (not= (.indexOf vars var) -1) (let [pos (.indexOf vars var)
+                                              sym-state (gensym)]
+                                          (calc-compr bindings expr vars vals
+                                                      `(accum (fn [~sym-vals ~sym-state]
+                                                                (let [~vars ~sym-vals
+                                                                      ~var (nth ~sym-state ~pos)]
+                                                                  (assoc ~sym-vals ~pos ~val))) ~vals ~input)))
+          :else (calc-compr bindings expr (conj vars var) (conj vals val)
                             `(map (fn [~sym-vals]
                                     (let [~vars ~sym-vals]
-                                      (conj ~sym-vals ~val))) ~output)))))))
+                                      (conj ~sym-vals ~val))) ~input)))))))
 
 (defmacro compr [bindings expr]
-  (calc-compr bindings expr [] `(list [])))
+  (calc-compr bindings expr [] [] `(list [])))

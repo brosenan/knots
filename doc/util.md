@@ -1,5 +1,6 @@
   * [Accumulation](#accumulation)
   * [Comprehension](#comprehension)
+    * [Reductions](#reductions)
 ```clojure
 (ns knots.util-test
   (:require [midje.sweet :refer [fact =>]]
@@ -89,5 +90,22 @@ side is taken as a predicate for filtering results.
  (compr [x @@[1 2 3]
          :when (= (mod x 2) 1)]
         x) => [1 3])
+
+```
+### Reductions
+
+If a binding variable appears more than once in the bindings list, this is
+interpreted as a stateful update. The initial binding defines the initial
+state, and every other appearance is an update to that state.
+
+In the following example we sum the elements of a vector by defining a `sum`
+binding, which is initialized to `0`, then we iterate over a vector and add
+each value to `sum`.
+```clojure
+(fact
+ (compr [sum 0
+         x @@[1 2 3]
+         sum (+ sum x)]
+        sum) => [1 3 6])
 ```
 
